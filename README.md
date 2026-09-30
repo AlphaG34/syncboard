@@ -1,7 +1,7 @@
 # SyncBoard
 
 A shared task board. Create, edit, move and delete tasks across three
-columns (To do, Doing, Done).
+columns (To do, Doing, Done). Changes appear live in every open window.
 
 **Live demo:** https://syncboard-ci0r.onrender.com/
 (Free hosting sleeps when idle, so the first load can take up to a minute.)
@@ -12,6 +12,7 @@ columns (To do, Doing, Done).
 
 - **Backend:** ASP.NET Core Web API (C#), EF Core with SQLite and migrations
 - **Frontend:** Next.js (static export) written in TypeScript, served by the API
+- **Live updates:** SignalR (WebSockets)
 - **Packaging and hosting:** Docker, deployed on Render
 
 ## Run it (one command)
@@ -48,6 +49,8 @@ Then open http://localhost:3000. See `.env.example` for the variables.
 - Loading, empty and error states on every list and fetch
 - Responsive layout: works at 375px wide and on desktop
 - Client-side form validation with inline errors and a disabled submit
+- Live sync: a change in one window appears in every other open window
+  within a second, with no refresh
 
 ## Decisions and trade-offs
 
@@ -57,10 +60,20 @@ Then open http://localhost:3000. See `.env.example` for the variables.
 - **One deployable:** Next.js is built to static files and served by
   the ASP.NET Core app, so there is a single URL and no CORS setup in
   production.
+- **SignalR for live sync:** the REST API still does all the saving.
+  After each save the server broadcasts the change, and every open
+  window updates its list by task id, so duplicates are impossible.
+  The client reconnects automatically and reloads the list after a
+  dropped connection. Trade-off: broadcasts only reach clients on the
+  same server instance. Running several instances would need a
+  backplane such as Redis.
 - **Version number on every task:** each edit sends the version it was
   based on, and the server returns 409 if the task changed in the
-  meantime. This prevents silent overwrites.
-- **Not included:** authentication, tests and CI.
+  meantime. This prevents silent overwrites. The UI reloads the board
+  and shows a message, but it does not yet let the user choose which
+  version to keep.
+- **Not included:** authentication, tests, CI, an offline queue and the
+  full conflict prompt.
 
 ## AI usage
 
