@@ -9,6 +9,10 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 var connection = builder.Configuration.GetConnectionString("Default") ?? "Data Source=syncboard.db";
 builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(connection));
 
+// Local development only: lets `npm run dev` (port 3000) call this API
+builder.Services.AddCors(o => o.AddPolicy("dev", p =>
+    p.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod()));
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -25,6 +29,7 @@ using (var scope = app.Services.CreateScope())
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.UseCors("dev");
 }
 
 app.UseDefaultFiles();
