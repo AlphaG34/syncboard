@@ -1,8 +1,9 @@
 "use client";
 
+import { HubConnectionBuilder } from "@microsoft/signalr";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { ApiError, createTask, deleteTask, getTasks, updateTask } from "./api";
+import { API, ApiError, createTask, deleteTask, getTasks, updateTask } from "./api";
 import type { Status, Task, TaskValues } from "./api";
 
 const COLUMNS: { status: Status; label: string }[] = [
@@ -179,6 +180,36 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+  const connection = new HubConnectionBuilder()
+    .withUrl(`${API}/hub`)
+    .withAutomaticReconnect()
+    .build();
+
+  const upsert = (task: Task) =>
+    setTasks((current) =>
+      current.some((t) => t.id === task.id)
+        ? current.map((t) => (t.id === task.id ? task : t))
+        : [...current, task],
+    );
+
+  connection.on("taskCreated", upsert);
+  connection.on("taskUpdated", upsert);
+  connection.on("taskDeleted", (id: number) =>
+    setTasks((current) => current.filter((t) => t.id !== id)),
+  );
+
+  // After a dropped connection, reload in case messages were missed
+  connection.onreconnected(() => {
+    getTasks().then(setTasks).catch(() => {});
+  });
+
+  connection.start().catch(() => {});
+  return () => {
+    connection.stop();
+  };
+}, []);
+
   async function reload() {
     try {
       setTasks(await getTasks());
@@ -194,9 +225,11 @@ export default function Home() {
   }
 
   async function handleCreate(values: TaskValues) {
-    const created = await createTask(values);
-    setTasks((current) => [...current, created]);
-  }
+  const created = await createTask(values);
+  setTasks((current) =>
+    current.some((t) => t.id === created.id) ? current : [...current, created],
+  );
+}
 
   async function handleSave(task: Task, values: TaskValues) {
     try {

@@ -12,7 +12,7 @@ export type Task = {
 export type TaskValues = { title: string; notes: string; status: Status };
 
 // Empty in production (same origin). Set in client/.env.development for local work.
-const API = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export class ApiError extends Error {
   status: number;

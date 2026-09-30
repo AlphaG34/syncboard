@@ -1,14 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SyncBoard.Data;
 using SyncBoard.Dtos;
+using SyncBoard.Hubs;
 using SyncBoard.Models;
 
 namespace SyncBoard.Controllers;
 
 [ApiController]
 [Route("api/tasks")]
-public class TasksController(AppDbContext db) : ControllerBase
+public class TasksController(AppDbContext db, IHubContext<BoardHub> hub) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<List<TaskItem>>> GetAll()
@@ -35,17 +37,18 @@ public class TasksController(AppDbContext db) : ControllerBase
         };
         db.Tasks.Add(task);
         await db.SaveChangesAsync();
-        return CreatedAtAction(nameof(Get), new { id = task.Id }, task);   // 201
+        await hub.Clients.All.SendAsync("taskCreated", task);
+        return CreatedAtAction(nameof(Get), new { id = task.Id }, task);
     }
 
     [HttpPut("{id:int}")]
     public async Task<ActionResult<TaskItem>> Update(int id, TaskUpdate input)
     {
         var task = await db.Tasks.FindAsync(id);
-        if (task is null) return NotFound();                               // 404
+        if (task is null) return NotFound();
 
         if (task.Version != input.BaseVersion)
-            return Conflict(task);                                         // 409: someone edited it first
+            return Conflict(task);
 
         task.Title = input.Title.Trim();
         task.Notes = input.Notes;
@@ -53,6 +56,7 @@ public class TasksController(AppDbContext db) : ControllerBase
         task.Version++;
         task.UpdatedAt = DateTime.UtcNow;
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("taskUpdated", task);
         return task;
     }
 
@@ -63,6 +67,7 @@ public class TasksController(AppDbContext db) : ControllerBase
         if (task is null) return NotFound();
         db.Tasks.Remove(task);
         await db.SaveChangesAsync();
-        return NoContent();                                                // 204
+        await hub.Clients.All.SendAsync("taskDeleted", id);
+        return NoContent();
     }
 }

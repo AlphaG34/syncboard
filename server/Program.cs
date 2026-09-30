@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SyncBoard.Data;
+using SyncBoard.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,14 +12,14 @@ builder.Services.AddDbContext<AppDbContext>(o => o.UseSqlite(connection));
 
 // Local development only: lets `npm run dev` (port 3000) call this API
 builder.Services.AddCors(o => o.AddPolicy("dev", p =>
-    p.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod()));
+    p.WithOrigins("http://localhost:3000").AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Create/update the database and fill it with demo data on every startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -35,6 +36,7 @@ if (app.Environment.IsDevelopment())
 app.UseDefaultFiles();
 app.UseStaticFiles();
 app.MapControllers();
+app.MapHub<BoardHub>("/hub");
 app.MapFallbackToFile("index.html");
 
 app.Run();
