@@ -74,6 +74,7 @@ Then open http://localhost:3000. See `.env.example` for the variables.
   version to keep.
 - **Not included:** authentication, tests, CI, an offline queue and the
   full conflict prompt.
+- Linting: ESLint, enforced by a script (`cd client && npm run lint`)
 
 ## AI usage
 
